@@ -144,7 +144,11 @@ export function CaseManager({ caseData, onLoad, onRename, onNew, onUpdate }: Cas
     if (!electron || !caseData) return;
     const timer = setTimeout(async () => {
       try {
-        await electron.saveCase(caseData);
+        // Only autosave if we already have a working directory
+        const dir = await electron.getWorkingDirectory();
+        if (dir) {
+          await electron.saveCase(caseData);
+        }
       } catch (err) {
         console.error("Autosave failed:", err);
       }
@@ -161,7 +165,12 @@ export function CaseManager({ caseData, onLoad, onRename, onNew, onUpdate }: Cas
   const handleSetDirectory = async () => {
     if (electron) {
       const dir = await electron.setWorkingDirectory();
-      if (dir) setWorkingDir(dir);
+      if (dir) {
+        setWorkingDir(dir);
+        // Also refresh library from the new directory
+        const cases = await electron.listCases();
+        setLibrary(cases);
+      }
     } else {
       alert("System Working Directory can only be configured when running the desktop app (Electron).");
     }
@@ -202,17 +211,17 @@ export function CaseManager({ caseData, onLoad, onRename, onNew, onUpdate }: Cas
 
   const handleSave = async () => {
     if (electron) {
-      if (caseData.filePath) {
-        // Standard overwrite save
-        await electron.saveCase(caseData);
-      } else {
-        // First time save - prompt for location
-        const result = await electron.saveCaseDialog(caseData);
-        if (result && result.updatedData) {
+      const result = await electron.saveCase(caseData);
+      if (result) {
+        if (result.updatedData) {
           onLoad(result.updatedData);
         }
+        if (result.workingDirectory) {
+          setWorkingDir(result.workingDirectory);
+        }
       }
-      // Still update the internal library for fallback
+
+      // Update the internal library
       const updated = await electron.listCases();
       setLibrary(updated);
     }

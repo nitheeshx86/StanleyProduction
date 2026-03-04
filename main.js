@@ -7,10 +7,11 @@ import { existsSync } from "fs";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-let workingDirectory = path.join(app.getPath("documents"), "LithoMap_Records");
+let workingDirectory = null;
 
-// Ensure default directory exists
+// Ensure directory exists
 async function ensureDirectory(dir) {
+    if (!dir) return;
     if (!existsSync(dir)) {
         await fs.mkdir(dir, { recursive: true });
     }
@@ -44,6 +45,7 @@ ipcMain.handle("get-working-dir", () => workingDirectory);
 ipcMain.handle("set-working-dir", async () => {
     const result = await dialog.showOpenDialog({
         properties: ["openDirectory", "createDirectory"],
+        title: "Select System Working Directory for Records"
     });
     if (!result.canceled) {
         workingDirectory = result.filePaths[0];
@@ -69,48 +71,80 @@ ipcMain.handle("save-case-dialog", async (event, caseData) => {
 });
 
 ipcMain.handle("save-case", async (event, caseData) => {
-    // If we have an explicit filePath (Saved via dialog), use it
-    if (caseData.filePath) {
-        await fs.writeFile(caseData.filePath, JSON.stringify(caseData, null, 2));
-        return caseData.filePath;
+    // 1. If we don't have a CWD, ask for one first (Very first save)
+    if (!workingDirectory) {
+        const result = await dialog.showOpenDialog({
+            properties: ["openDirectory", "createDirectory"],
+            title: "Choose a folder to save your records in"
+        });
+        if (result.canceled || result.filePaths.length === 0) {
+            return null; // Cancelled
+        }
+        workingDirectory = result.filePaths[0];
     }
 
-    // Otherwise save to internal records directory
-    await ensureDirectory(workingDirectory);
-    const fileName = `${caseData.id}.json`;
+    // 2. We have a working directory, let's determine the file path
+    // We use the case name as the filename (sanitized)
+    const sanitizedName = (caseData.name || caseData.id).replace(/[<>:"/\\|?*]/g, "_");
+    const fileName = `${sanitizedName}.json`;
     const filePath = path.join(workingDirectory, fileName);
-    await fs.writeFile(filePath, JSON.stringify(caseData, null, 2));
-    return filePath;
+
+    // 3. Just write the file (this handles "overwrite if exists, create if not" naturally)
+    // We also update the filePath in the JSON itself so it points to the current location
+    const updatedData = { ...caseData, filePath: filePath };
+
+    try {
+        await ensureDirectory(workingDirectory);
+        await fs.writeFile(filePath, JSON.stringify(updatedData, null, 2));
+        return { filePath, workingDirectory, updatedData };
+    } catch (error) {
+        console.error("Failed to save case:", error);
+        throw error;
+    }
 });
 
 ipcMain.handle("list-cases", async () => {
-    if (!existsSync(workingDirectory)) return [];
-    const files = await fs.readdir(workingDirectory);
-    const cases = [];
-    for (const file of files) {
-        if (file.endsWith(".json")) {
-            try {
-                const content = await fs.readFile(path.join(workingDirectory, file), "utf-8");
-                cases.push(JSON.parse(content));
-            } catch (e) {
-                console.error("Failed to read case:", file);
+    if (!workingDirectory || !existsSync(workingDirectory)) return [];
+    try {
+        const files = await fs.readdir(workingDirectory);
+        const cases = [];
+        for (const file of files) {
+            if (file.endsWith(".json")) {
+                try {
+                    const content = await fs.readFile(path.join(workingDirectory, file), "utf-8");
+                    cases.push(JSON.parse(content));
+                } catch (e) {
+                    console.error("Failed to read case:", file);
+                }
             }
         }
+        return cases;
+    } catch (err) {
+        console.error("Failed to list cases:", err);
+        return [];
     }
-    return cases;
 });
 
 ipcMain.handle("delete-case", async (event, id) => {
-    const filePath = path.join(workingDirectory, `${id}.json`);
-    if (existsSync(filePath)) {
-        await fs.unlink(filePath);
-        return true;
+    if (!workingDirectory) return false;
+
+    // We search for the file with this ID in the working directory
+    const files = await fs.readdir(workingDirectory);
+    for (const file of files) {
+        if (file.endsWith(".json")) {
+            const content = await fs.readFile(path.join(workingDirectory, file), "utf-8");
+            const data = JSON.parse(content);
+            if (data.id === id) {
+                await fs.unlink(path.join(workingDirectory, file));
+                return true;
+            }
+        }
     }
     return false;
 });
 
 app.whenReady().then(async () => {
-    await ensureDirectory(workingDirectory);
+    // We no longer ensure default directory on startup since we want it to be null
     createWindow();
 });
 
