@@ -648,39 +648,21 @@ const Index = () => {
 
             <Separator className="bg-border opacity-50" />
 
-            {/* Layers Section */}
-            <div>
-              <div
-                className="flex items-center justify-between cursor-pointer group mb-2"
-                onClick={() => setMinimizeLayers(!minimizeLayers)}
-              >
-                <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] group-hover:text-foreground transition-colors">
-                  Layer Management
-                </h3>
-                <button className="p-1 hover:bg-accent rounded transition-colors group-hover:bg-accent">
-                  {minimizeLayers ? (
-                    <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                  ) : (
-                    <ChevronUp className="h-3 w-3 text-muted-foreground" />
-                  )}
-                </button>
-              </div>
-              {!minimizeLayers && (
-                <LayerPanel
-                  layers={caseData.layers}
-                  activeLayerId={activeLayerId}
-                  onSelectLayer={setActiveLayerId}
-                  onAddLayer={handleAddLayer}
-                  onDeleteLayer={handleDeleteLayer}
-                  onRenameLayer={handleRenameLayer}
-                  onUpdateLayerColor={handleUpdateLayerColor}
-                  onToggleVisibility={handleToggleVisibility}
-                  onHoverLayer={setHoveredLayerId}
+            {selectedMarker && (
+              <div className="pb-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
+                    Marker Composition
+                  </h3>
+                </div>
+                <MarkerForm
+                  marker={selectedMarker}
+                  onChange={handleMarkerUpdate}
+                  onDelete={handleMarkerDelete}
                 />
-              )}
-            </div>
-
-            <Separator className="bg-border opacity-50" />
+                <Separator className="bg-border opacity-50 mt-4" />
+              </div>
+            )}
 
             <ClipSlider
               enabled={clipEnabled}
@@ -717,15 +699,40 @@ const Index = () => {
               )}
             </div>
 
-            {selectedMarker && (
-              <div className="pt-4 border-t border-border animate-in fade-in slide-in-from-bottom-4 duration-300">
-                <MarkerForm
-                  marker={selectedMarker}
-                  onChange={handleMarkerUpdate}
-                  onDelete={handleMarkerDelete}
-                />
+            <Separator className="bg-border opacity-50" />
+
+            {/* Layers Section */}
+            <div>
+              <div
+                className="flex items-center justify-between cursor-pointer group mb-2"
+                onClick={() => setMinimizeLayers(!minimizeLayers)}
+              >
+                <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] group-hover:text-foreground transition-colors">
+                  Layer Management
+                </h3>
+                <button className="p-1 hover:bg-accent rounded transition-colors group-hover:bg-accent">
+                  {minimizeLayers ? (
+                    <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                  ) : (
+                    <ChevronUp className="h-3 w-3 text-muted-foreground" />
+                  )}
+                </button>
               </div>
-            )}
+              {!minimizeLayers && (
+                <LayerPanel
+                  layers={caseData.layers}
+                  activeLayerId={activeLayerId}
+                  onSelectLayer={setActiveLayerId}
+                  onAddLayer={handleAddLayer}
+                  onDeleteLayer={handleDeleteLayer}
+                  onRenameLayer={handleRenameLayer}
+                  onUpdateLayerColor={handleUpdateLayerColor}
+                  onToggleVisibility={handleToggleVisibility}
+                  onHoverLayer={setHoveredLayerId}
+                />
+              )}
+            </div>
+
           </div>
         </aside>
       </div>

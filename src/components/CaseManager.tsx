@@ -262,7 +262,7 @@ export function CaseManager({ caseData, onLoad, onRename, onNew, onUpdate }: Cas
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {/* Working Directory Indicator */}
       <div className="flex items-center justify-between px-2 py-1.5 bg-slate-950/40 rounded-lg border border-white/5 mb-1 group cursor-pointer hover:border-blue-500/20 transition-all" onClick={handleSetDirectory}>
         <div className="flex flex-col">
@@ -322,21 +322,21 @@ export function CaseManager({ caseData, onLoad, onRename, onNew, onUpdate }: Cas
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="grid grid-cols-2 gap-1.5">
+      <div className="grid grid-cols-3 gap-2">
         <Button
           variant="outline"
           size="sm"
-          className={`col-span-2 text-[10px] font-black uppercase tracking-widest h-8 border-blue-500/20 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 hover:border-blue-500/40 transition-all gap-2`}
+          className={`col-span-3 text-[10px] font-black uppercase tracking-widest h-8 border-blue-500/20 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 hover:border-blue-500/40 transition-all gap-2`}
           onClick={handleSave}
         >
           <Save className="h-3.5 w-3.5" />
-          {caseData.filePath ? 'Overwrite Save' : 'Save to System'}
+          Save
         </Button>
         <Dialog open={libraryOpen} onOpenChange={setLibraryOpen}>
           <DialogTrigger asChild>
-            <Button variant="outline" size="sm" className="text-[10px] font-black uppercase tracking-widest h-7 border-white/10 hover:bg-white/5">
+            <Button variant="outline" size="sm" className="text-[10px] font-black uppercase tracking-widest h-8 border-white/10 hover:bg-white/5 flex items-center justify-center">
               <FolderOpen className="h-3 w-3 mr-1.5" />
-              Local Records
+              Records
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 bg-slate-950 border-white/10 text-white overflow-hidden shadow-2xl">
@@ -486,14 +486,14 @@ export function CaseManager({ caseData, onLoad, onRename, onNew, onUpdate }: Cas
             </div>
           </DialogContent>
         </Dialog>
-        <Button variant="outline" size="sm" className="text-[10px] font-black uppercase tracking-widest h-7 border-white/10 hover:bg-white/5" onClick={() => handleExportJSON()}>
+        <Button variant="outline" size="sm" className="text-[10px] font-black uppercase tracking-widest h-8 border-white/10 hover:bg-white/5 flex items-center justify-center" onClick={() => handleExportJSON()}>
           <Download className="h-3 w-3 mr-1.5" />
           Export
         </Button>
         <Button
           variant="outline"
           size="sm"
-          className="text-[10px] font-black uppercase tracking-widest h-7 border-white/10 hover:bg-white/5"
+          className="text-[10px] font-black uppercase tracking-widest h-8 border-white/10 hover:bg-white/5 flex items-center justify-center"
           onClick={() => fileRef.current?.click()}
         >
           <Upload className="h-3 w-3 mr-1.5" />
@@ -506,7 +506,7 @@ export function CaseManager({ caseData, onLoad, onRename, onNew, onUpdate }: Cas
             <Button
               variant="outline"
               size="sm"
-              className="col-span-2 text-[10px] font-black uppercase tracking-widest h-8 border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 text-blue-400 hover:border-blue-500/40 transition-all gap-2"
+              className="col-span-3 text-[10px] font-black uppercase tracking-widest h-8 border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 text-blue-400 hover:border-blue-500/40 transition-all gap-2"
             >
               <ClipboardList className="h-3.5 w-3.5" />
               Patient Clinical Data
