@@ -70,7 +70,7 @@ ipcMain.handle("save-case-dialog", async (event, caseData) => {
     return null;
 });
 
-ipcMain.handle("save-case", async (event, caseData) => {
+ipcMain.handle("save-case", async (event, caseData, notify = false) => {
     // 1. If we don't have a CWD, ask for one first (Very first save)
     if (!workingDirectory) {
         const result = await dialog.showOpenDialog({
@@ -84,20 +84,30 @@ ipcMain.handle("save-case", async (event, caseData) => {
     }
 
     // 2. We have a working directory, let's determine the file path
-    // We use the case name as the filename (sanitized)
     const sanitizedName = (caseData.name || caseData.id).replace(/[<>:"/\\|?*]/g, "_");
     const fileName = `${sanitizedName}.json`;
     const filePath = path.join(workingDirectory, fileName);
 
-    // 3. Just write the file (this handles "overwrite if exists, create if not" naturally)
-    // We also update the filePath in the JSON itself so it points to the current location
+    // Check if it exists for the message box
+    const exists = existsSync(filePath);
+
+    // 3. Just write the file
     const updatedData = { ...caseData, filePath: filePath };
 
     try {
         await ensureDirectory(workingDirectory);
         await fs.writeFile(filePath, JSON.stringify(updatedData, null, 2));
-        return { filePath, workingDirectory, updatedData };
+
+        return {
+            filePath,
+            workingDirectory,
+            updatedData,
+            isOverwrite: exists
+        };
     } catch (error) {
+        if (notify) {
+            await dialog.showErrorBox("Save Failed", error.message);
+        }
         console.error("Failed to save case:", error);
         throw error;
     }

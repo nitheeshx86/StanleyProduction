@@ -27,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -211,7 +212,7 @@ export function CaseManager({ caseData, onLoad, onRename, onNew, onUpdate }: Cas
 
   const handleSave = async () => {
     if (electron) {
-      const result = await electron.saveCase(caseData);
+      const result = await electron.saveCase(caseData, true);
       if (result) {
         if (result.updatedData) {
           onLoad(result.updatedData);
@@ -219,6 +220,11 @@ export function CaseManager({ caseData, onLoad, onRename, onNew, onUpdate }: Cas
         if (result.workingDirectory) {
           setWorkingDir(result.workingDirectory);
         }
+
+        // Show non-blocking notification
+        toast.success("Saved successfully", {
+          duration: 3000,
+        });
       }
 
       // Update the internal library
