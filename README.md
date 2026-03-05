@@ -49,5 +49,5 @@ npm run electron:build
 - `src/components/CaseManager.tsx`: Local storage and JSON-based library management.
 
 ---
-**Developed by Nitheesh K**  
-© 2026 Govt. Stanley Medical College - Department of Biochemistry
+**Developed by Nitheesh K**  for
+2026 Govt. Stanley Medical College - Department of Biochemistry
