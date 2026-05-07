@@ -2,22 +2,37 @@ import { MineralEntry } from './types';
 
 // Known mineral colors
 const KNOWN_COLORS: Record<string, string> = {
+  'whewellite': '#6B3A1F', // Brownish
+  'weddellite': '#E8D44D', // Yellowish
+  'cystine': '#C77DFF', // Purple
+  'xanthine': '#FFB703', // Golden
+  'proteine': '#8ECAE6', // Sky Blue
+  'dahllite': '#219EBC', // Blue
+  'struvite': '#A0C4FF', // Light Blue
+  'brushite': '#BDB2FF', // Violet
+  'uric acid': '#E87D2E', // Orange
+  'uric acid dihydrate': '#FB8500', // Deep Orange
+  'ammonium urate': '#FFB703',
+  'sodium urate monohydrate': '#FFD000',
+  'calcium phosphate': '#E8E8E8', // Light Grey
+  '2,8-dihydroxyadenine': '#8338EC',
+  'hydroxylapatite': '#CAFFBF', // Light Green
+  'calcite': '#FFFFFF',
+  'aragonite': '#F8F9FA',
+  'gypsum': '#E9ECEF',
+  'alpha-quartz': '#DEE2E6',
+  'tridymite': '#CED4DA',
+  'oxolinic acid': '#FF006E',
+  'cholesterol': '#FFBE0B',
+  'whitlockite': '#3A86FF',
+  'newberyite': '#FB5607',
+  'potassium urate': '#FF006E',
   'com': '#6B3A1F',
-  'calcium oxalate monohydrate': '#6B3A1F',
   'cod': '#E8D44D',
-  'calcium oxalate dihydrate': '#E8D44D',
-  'phosphate': '#E8E8E8',
   'ua': '#E87D2E',
-  'uric acid': '#E87D2E',
-  'uricacid': '#E87D2E',
   'str': '#A0C4FF',
-  'struvite': '#A0C4FF',
-  'cys': '#C77DFF',
-  'cystine': '#C77DFF',
   'bru': '#BDB2FF',
-  'brushite': '#BDB2FF',
-  'cap': '#CAFFBF',
-  'apatite': '#CAFFBF',
+  'cap': '#E8E8E8',
 };
 
 // Generate a stable pastel color from a string

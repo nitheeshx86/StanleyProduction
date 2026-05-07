@@ -1,6 +1,7 @@
 export interface MineralEntry {
   name: string;
   percentage: number;
+  code?: number; // Numeric code for standardized FTIR library
 }
 
 export interface Marker {
@@ -57,14 +58,19 @@ export interface SavedCase {
   filePath?: string;
 }
 
+const uuid = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  return Math.random().toString(36).substring(2, 11);
+};
+
 export function createDefaultCase(): CaseData {
   return {
-    id: crypto.randomUUID(),
+    id: uuid(),
     name: 'Untitled Case',
     createdAt: new Date().toISOString(),
     layers: [
       {
-        id: crypto.randomUUID(),
+        id: uuid(),
         name: 'Surface A',
         radius: 2,
         isVisible: true,
@@ -78,7 +84,7 @@ export function createLayer(index: number, outerRadius: number): Layer {
   const radius = Math.max(outerRadius - 0.4 * index, 0.4);
   const letter = String.fromCharCode(65 + index);
   return {
-    id: crypto.randomUUID(),
+    id: uuid(),
     name: `Surface ${letter}`,
     radius,
     isVisible: true,

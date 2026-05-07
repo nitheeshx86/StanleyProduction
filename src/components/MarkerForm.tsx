@@ -1,4 +1,5 @@
 import { Marker, MineralEntry } from '@/lib/types';
+import { MINERAL_LIBRARY } from '@/lib/mineralLibrary';
 import { getMineralColor } from '@/lib/markerColors';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,15 +16,11 @@ import {
 } from '@/components/ui/select';
 import { useState, useEffect } from 'react';
 
-const MINERAL_OPTIONS = [
-  { value: 'COM', label: 'COM (Calcium Oxalate Monohydrate)' },
-  { value: 'COD', label: 'COD (Calcium Oxalate Dihydrate)' },
-  { value: 'UA', label: 'UA (Uric Acid)' },
-  { value: 'STR', label: 'STR (Struvite)' },
-  { value: 'CAP', label: 'CAP (Carbonate Apatite)' },
-  { value: 'BRU', label: 'BRU (Brushite)' },
-  { value: 'CYS', label: 'Cystine' },
-];
+const MINERAL_OPTIONS = MINERAL_LIBRARY.map(m => ({
+  value: m.name,
+  label: `${m.code} - ${m.name}`,
+  code: m.code
+}));
 
 interface MarkerFormProps {
   marker: Marker;
@@ -46,11 +43,11 @@ export function MarkerForm({ marker, onChange, onDelete }: MarkerFormProps) {
     });
   };
 
-  const updateMineral = (index: number, field: keyof MineralEntry, value: string | number) => {
+  const updateMineral = (index: number, field: keyof MineralEntry, value: string | number, code?: number) => {
     const updated = [...marker.composition];
     if (field === 'name') {
-      updated[index] = { ...updated[index], name: value as string };
-    } else {
+      updated[index] = { ...updated[index], name: value as string, code };
+    } else if (field === 'percentage') {
       updated[index] = { ...updated[index], percentage: Math.max(0, Math.min(100, value as number)) };
     }
     onChange({ ...marker, composition: updated });
@@ -130,7 +127,8 @@ export function MarkerForm({ marker, onChange, onDelete }: MarkerFormProps) {
                     if (val === 'manual') {
                       setManualFields(prev => ({ ...prev, [idx]: true }));
                     } else {
-                      updateMineral(idx, 'name', val);
+                      const selected = MINERAL_OPTIONS.find(opt => opt.value === val);
+                      updateMineral(idx, 'name', val, selected?.code);
                     }
                   }}
                 >

@@ -16,8 +16,12 @@ import {
   Search,
   User,
   ClipboardList,
-  Stethoscope
+  Stethoscope,
+  AlertCircle,
+  Check,
+  Loader2
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -73,19 +77,35 @@ function saveLibrary(cases: SavedCase[]) {
 
 interface CaseManagerProps {
   caseData: CaseData;
+  workingDir: string | null;
+  onDirChange: (dir: string | null) => void;
+  shakeDir?: boolean;
+  isDirty?: boolean;
+  onSaveComplete?: () => void;
   onLoad: (data: CaseData) => void;
   onRename: (name: string) => void;
   onNew: () => void;
   onUpdate: (data: Partial<CaseData>) => void;
 }
 
-export function CaseManager({ caseData, onLoad, onRename, onNew, onUpdate }: CaseManagerProps) {
+export function CaseManager({ 
+  caseData, 
+  workingDir, 
+  onDirChange, 
+  shakeDir, 
+  isDirty,
+  onSaveComplete,
+  onLoad,
+  onRename,
+  onNew,
+  onUpdate 
+}: CaseManagerProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [newStoneDialogOpen, setNewStoneDialogOpen] = useState(false);
   const [library, setLibrary] = useState<SavedCase[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [workingDir, setWorkingDir] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [patientDialogOpen, setPatientDialogOpen] = useState(false);
 
   const patientData = caseData.patientData || {
@@ -121,7 +141,7 @@ export function CaseManager({ caseData, onLoad, onRename, onNew, onUpdate }: Cas
     const init = async () => {
       if (electron) {
         const dir = await electron.getWorkingDirectory();
-        setWorkingDir(dir);
+        onDirChange(dir);
         const cases = await electron.listCases();
         setLibrary(cases);
       }
@@ -166,18 +186,17 @@ export function CaseManager({ caseData, onLoad, onRename, onNew, onUpdate }: Cas
   const handleSetDirectory = async () => {
     if (electron) {
       const dir = await electron.setWorkingDirectory();
-      if (dir) {
-        setWorkingDir(dir);
-        // Also refresh library from the new directory
-        const cases = await electron.listCases();
-        setLibrary(cases);
-      }
+      if (dir) onDirChange(dir);
     } else {
       alert("System Working Directory can only be configured when running the desktop app (Electron).");
     }
   };
 
   const handleExportJSON = async (data?: CaseData | SavedCase) => {
+    if (!data && isDirty) {
+      alert("UNSAVED CHANGES DETECTED: Please save your current work before exporting.");
+      return;
+    }
     const targetData = data || caseData;
     const filename = `${targetData.name.replace(/\s+/g, '_')}.json`;
     const jsonString = JSON.stringify(targetData, null, 2);
@@ -193,6 +212,11 @@ export function CaseManager({ caseData, onLoad, onRename, onNew, onUpdate }: Cas
   };
 
   const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isDirty) {
+      alert("UNSAVED CHANGES DETECTED: Please save your current work before importing a new file.");
+      e.target.value = '';
+      return;
+    }
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -211,25 +235,23 @@ export function CaseManager({ caseData, onLoad, onRename, onNew, onUpdate }: Cas
   };
 
   const handleSave = async () => {
-    if (electron) {
-      const result = await electron.saveCase(caseData, true);
-      if (result) {
-        if (result.updatedData) {
-          onLoad(result.updatedData);
+    if (!workingDir) return;
+    
+    setIsSaving(true);
+    try {
+      if (electron) {
+        const result = await electron.saveCase(caseData, true);
+        if (result) {
+          if (result.updatedData) onLoad(result.updatedData);
+          if (result.workingDirectory) onDirChange(result.workingDirectory);
         }
-        if (result.workingDirectory) {
-          setWorkingDir(result.workingDirectory);
-        }
-
-        // Show non-blocking notification
-        toast.success("Saved successfully", {
-          duration: 3000,
-        });
+        
+        const updated = await electron.listCases();
+        setLibrary(updated);
+        onSaveComplete?.();
       }
-
-      // Update the internal library
-      const updated = await electron.listCases();
-      setLibrary(updated);
+    } finally {
+      setTimeout(() => setIsSaving(false), 800);
     }
   };
 
@@ -264,14 +286,35 @@ export function CaseManager({ caseData, onLoad, onRename, onNew, onUpdate }: Cas
   return (
     <div className="space-y-4">
       {/* Working Directory Indicator */}
-      <div className="flex items-center justify-between px-2 py-1.5 bg-slate-950/40 rounded-lg border border-white/5 mb-1 group cursor-pointer hover:border-blue-500/20 transition-all" onClick={handleSetDirectory}>
+      <div 
+        className={cn(
+          "flex items-center justify-between px-3 py-2 rounded-none border-l-4 transition-all group cursor-pointer mb-2",
+          workingDir 
+            ? "bg-blue-500/10 border-blue-500 hover:bg-blue-500/20" 
+            : "bg-red-500/10 border-red-500 animate-pulse",
+          shakeDir && "animate-shake"
+        )} 
+        onClick={handleSetDirectory}
+      >
         <div className="flex flex-col">
-          <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">System Working Directory</span>
-          <span className="text-[10px] text-blue-400 font-bold truncate max-w-[200px]">
-            {workingDir || 'Not Set'}
+          <span className={cn(
+            "text-[8px] font-black uppercase tracking-widest",
+            workingDir ? "text-blue-500/70" : "text-red-500/70"
+          )}>
+            System Working Directory
+          </span>
+          <span className={cn(
+            "text-[10px] font-bold truncate max-w-[200px]",
+            workingDir ? "text-blue-400" : "text-red-500"
+          )}>
+            {workingDir || 'NOT SET — CONFIGURATION REQUIRED'}
           </span>
         </div>
-        <FolderOpen className="h-3 w-3 text-slate-500 group-hover:text-blue-400" />
+        {workingDir ? (
+          <FolderOpen className="h-3.5 w-3.5 text-blue-500" />
+        ) : (
+          <AlertCircle className="h-3.5 w-3.5 text-red-500" />
+        )}
       </div>
 
       <div className="flex items-center gap-2">
@@ -326,13 +369,31 @@ export function CaseManager({ caseData, onLoad, onRename, onNew, onUpdate }: Cas
         <Button
           variant="outline"
           size="sm"
-          className={`col-span-3 text-[10px] font-black uppercase tracking-widest h-8 border-blue-500/20 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 hover:border-blue-500/40 transition-all gap-2`}
+          disabled={isSaving || !workingDir}
+          className={cn(
+            "col-span-2 text-[10px] font-black uppercase tracking-widest h-8 transition-all gap-2 border-l-4",
+            isDirty 
+              ? "border-amber-500 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20" 
+              : "border-emerald-500 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30"
+          )}
           onClick={handleSave}
         >
-          <Save className="h-3.5 w-3.5" />
-          Save
+          {isSaving ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : !isDirty ? (
+            <Check className="h-3.5 w-3.5" />
+          ) : (
+            <Save className="h-3.5 w-3.5" />
+          )}
+          {isSaving ? 'Processing...' : !isDirty ? 'Records Synced' : caseData.filePath ? 'Overwrite Save' : 'Save to System'}
         </Button>
-        <Dialog open={libraryOpen} onOpenChange={setLibraryOpen}>
+        <Dialog open={libraryOpen} onOpenChange={(open) => {
+          if (open && isDirty) {
+            alert("UNSAVED CHANGES DETECTED: Please save your current work before accessing records.");
+            return;
+          }
+          setLibraryOpen(open);
+        }}>
           <DialogTrigger asChild>
             <Button variant="outline" size="sm" className="text-[10px] font-black uppercase tracking-widest h-8 border-white/10 hover:bg-white/5 flex items-center justify-center">
               <FolderOpen className="h-3 w-3 mr-1.5" />

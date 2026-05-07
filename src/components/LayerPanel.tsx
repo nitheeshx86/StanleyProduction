@@ -1,8 +1,7 @@
 import { Layer } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Layers, Trash2, Palette, RefreshCw } from 'lucide-react';
+import { Plus, Layers, Trash2, Palette, RefreshCw, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
@@ -96,30 +95,49 @@ export function LayerPanel({
                       onMouseEnter={() => onHoverLayer(layer.id)}
                       onMouseLeave={() => onHoverLayer(null)}
                     >
-                      <Checkbox
-                        checked={layer.isVisible}
-                        onCheckedChange={() => onToggleVisibility(layer.id)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="h-3.5 w-3.5"
-                      />
                       <div
-                        className="w-3 h-3 rounded-full border shrink-0 transition-all duration-300"
-                        style={{
-                          borderColor: layer.color || (isActive ? `hsl(${defaultHue}, 60%, 60%)` : 'hsl(var(--border))'),
-                          background: displayColor,
-                          boxShadow: isActive ? `0 0 10px ${layer.color || `hsl(${defaultHue}, 60%, 40%, 0.4)`}` : 'none',
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleVisibility(layer.id);
                         }}
-                      />
+                        className={cn(
+                          "cursor-pointer transition-colors p-0.5 rounded-sm hover:bg-muted-foreground/10 shrink-0",
+                          !layer.isVisible ? "text-slate-500" : "text-muted-foreground"
+                        )}
+                      >
+                        {layer.isVisible ? (
+                          <Eye className="h-3.5 w-3.5" />
+                        ) : (
+                          <EyeOff className="h-3.5 w-3.5" />
+                        )}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={cn(
+                          "h-6 px-2 text-[9px] font-black uppercase tracking-tight transition-all shrink-0",
+                          isActive 
+                            ? "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]" 
+                            : "text-muted-foreground hover:text-foreground border-border"
+                        )}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectLayer(layer.id);
+                        }}
+                        title="click this button if you want to mark points on this layer"
+                      >
+                        {isActive ? "Selected Layer" : "Select Layer"}
+                      </Button>
                       <Input
                         value={layer.name}
                         onChange={(e) => onRenameLayer(layer.id, e.target.value)}
                         onClick={(e) => e.stopPropagation()}
                         className="h-6 text-xs bg-transparent border-none p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
                       />
-                      <span className="text-[10px] text-muted-foreground shrink-0">
-                        r={layer.radius.toFixed(1)}
+                      <span className="text-[9px] font-black text-muted-foreground shrink-0 uppercase tracking-widest">
+                        {i === 0 ? "Outermost" : i === layers.length - 1 ? "Innermost" : ""}
                       </span>
-                      <span className="text-[10px] text-muted-foreground shrink-0">
+                      <span className="text-[10px] text-muted-foreground shrink-0 font-mono">
                         {layer.markers.length}pt
                       </span>
                       {layers.length > 1 && (

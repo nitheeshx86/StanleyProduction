@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { CaseData, Marker, Layer, createDefaultCase, createLayer } from '@/lib/types';
 import { StoneScene, StoneSceneHandle } from '@/components/stone/StoneScene';
 import { MarkerForm } from '@/components/MarkerForm';
@@ -38,6 +38,27 @@ const Index = () => {
   const [minimizeCase, setMinimizeCase] = useState(false);
   const undoStack = useRef<Layer[][]>([]);
   const stoneSceneRef = useRef<StoneSceneHandle>(null);
+  const [workingDir, setWorkingDir] = useState<string | null>(null);
+  const [shakeDir, setShakeDir] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+
+  // Initialize working directory
+  useEffect(() => {
+    const init = async () => {
+      const electron = (window as any).electron;
+      if (electron) {
+        const dir = await electron.getWorkingDirectory();
+        setWorkingDir(dir);
+      }
+    };
+    init();
+  }, []);
+
+  const triggerDirWarning = useCallback(() => {
+    setMinimizeCase(false); // Ensure Case section is open
+    setShakeDir(true);
+    setTimeout(() => setShakeDir(false), 500);
+  }, []);
 
   const handleGenerateReport = useCallback(() => {
     const stoneImage = stoneSceneRef.current?.capture();
@@ -49,12 +70,14 @@ const Index = () => {
       ...undoStack.current.slice(-(MAX_UNDO - 1)),
       JSON.parse(JSON.stringify(caseData.layers)),
     ];
+    setIsDirty(true);
   }, [caseData.layers]);
 
   const handleUndo = useCallback(() => {
     if (undoStack.current.length === 0) return;
     const prev = undoStack.current.pop()!;
     setCaseData((c) => ({ ...c, layers: prev }));
+    setIsDirty(true);
     if (prev.length > 0 && !prev.find((l) => l.id === activeLayerId)) {
       setActiveLayerId(prev[0].id);
     }
@@ -72,9 +95,17 @@ const Index = () => {
   const handleSurfaceClick = useCallback(
     (position: [number, number, number], layerId: string) => {
       if (viewerMode === 'view') return;
+      if (!workingDir) {
+        triggerDirWarning();
+        return;
+      }
       pushUndo();
 
-      const markerId = crypto.randomUUID();
+      const uuid = () => {
+        if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+        return Math.random().toString(36).substring(2, 11);
+      };
+      const markerId = uuid();
 
       setCaseData((prev) => {
         const layerIndex = prev.layers.findIndex((l) => l.id === layerId);
@@ -105,7 +136,7 @@ const Index = () => {
 
       setSelectedMarkerId(markerId);
     },
-    [pushUndo, viewerMode]
+    [pushUndo, viewerMode, workingDir, triggerDirWarning]
   );
 
   const handleMarkerClick = useCallback((markerId: string) => {
@@ -612,81 +643,86 @@ const Index = () => {
         </main>
 
         {/* Sidebar */}
-        <aside className="w-[320px] shrink-0 border-l border-border overflow-y-auto bg-card/10 backdrop-blur-sm shadow-xl custom-scrollbar">
+        <aside className="w-[400px] shrink-0 border-l border-border overflow-y-auto bg-card/10 backdrop-blur-sm shadow-xl custom-scrollbar">
           <div className="p-4 space-y-4">
             {/* Case Section */}
-            <div>
+            <div className="bg-blue-50/10 p-3 border-l-4 border-blue-500 shadow-sm mb-1 rounded-none">
               <div
                 className="flex items-center justify-between cursor-pointer group mb-2"
                 onClick={() => setMinimizeCase(!minimizeCase)}
               >
-                <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] group-hover:text-foreground transition-colors">
+                <h3 className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">
                   System Records
                 </h3>
-                <button className="p-1 hover:bg-accent rounded transition-colors group-hover:bg-accent">
+                <button className="p-0.5 hover:bg-white/5 transition-colors">
                   {minimizeCase ? (
-                    <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                    <ChevronDown className="h-3 w-3 text-blue-400" />
                   ) : (
-                    <ChevronUp className="h-3 w-3 text-muted-foreground" />
+                    <ChevronUp className="h-3 w-3 text-blue-400" />
                   )}
                 </button>
               </div>
               {!minimizeCase && (
                 <CaseManager
                   caseData={caseData}
+                  workingDir={workingDir}
+                  onDirChange={setWorkingDir}
+                  shakeDir={shakeDir}
+                  isDirty={isDirty}
+                  onSaveComplete={() => setIsDirty(false)}
                   onLoad={(data) => {
                     setCaseData(data);
                     setActiveLayerId(data.layers[0]?.id || '');
                     setSelectedMarkerId(null);
                   }}
-                  onRename={(name) => setCaseData((prev) => ({ ...prev, name }))}
+                  onRename={(name) => {
+                    setCaseData((prev) => ({ ...prev, name }));
+                    setIsDirty(true);
+                  }}
                   onNew={handleResetCase}
-                  onUpdate={(updates) => setCaseData((prev) => ({ ...prev, ...updates }))}
+                  onUpdate={(updates) => {
+                    setCaseData((prev) => ({ ...prev, ...updates }));
+                    setIsDirty(true);
+                  }}
                 />
               )}
             </div>
 
-            <Separator className="bg-border opacity-50" />
+            {/* Section View */}
+            <div className="bg-emerald-50/10 p-3 border-l-4 border-emerald-500 shadow-sm mb-1 rounded-none">
+              <ClipSlider
+                enabled={clipEnabled}
+                onEnabledChange={setClipEnabled}
+                position={clipPosition}
+                onPositionChange={setClipPosition}
+              />
+            </div>
 
+            {/* Marker Composition (Selected Point) */}
             {selectedMarker && (
-              <div className="pb-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                    Marker Composition
-                  </h3>
-                </div>
+              <div className="bg-violet-50/10 p-3 border-l-4 border-violet-500 shadow-sm mb-1 rounded-none animate-in fade-in slide-in-from-top-1 duration-200">
                 <MarkerForm
                   marker={selectedMarker}
                   onChange={handleMarkerUpdate}
                   onDelete={handleMarkerDelete}
                 />
-                <Separator className="bg-border opacity-50 mt-4" />
               </div>
             )}
 
-            <ClipSlider
-              enabled={clipEnabled}
-              onEnabledChange={setClipEnabled}
-              position={clipPosition}
-              onPositionChange={setClipPosition}
-            />
-
-            <Separator className="bg-border opacity-50" />
-
-            {/* Markers Section */}
-            <div>
+            {/* Point Catalog */}
+            <div className="bg-amber-50/10 p-3 border-l-4 border-amber-500 shadow-sm mb-1 rounded-none">
               <div
                 className="flex items-center justify-between cursor-pointer group mb-2"
                 onClick={() => setMinimizeMarkers(!minimizeMarkers)}
               >
-                <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] group-hover:text-foreground transition-colors">
+                <h3 className="text-[10px] font-bold text-amber-400 uppercase tracking-widest">
                   Point Catalog
                 </h3>
-                <button className="p-1 hover:bg-accent rounded transition-colors group-hover:bg-accent">
+                <button className="p-0.5 hover:bg-white/5 transition-colors">
                   {minimizeMarkers ? (
-                    <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                    <ChevronDown className="h-3 w-3 text-amber-400" />
                   ) : (
-                    <ChevronUp className="h-3 w-3 text-muted-foreground" />
+                    <ChevronUp className="h-3 w-3 text-amber-400" />
                   )}
                 </button>
               </div>
@@ -699,22 +735,20 @@ const Index = () => {
               )}
             </div>
 
-            <Separator className="bg-border opacity-50" />
-
             {/* Layers Section */}
-            <div>
+            <div className="bg-slate-50/10 p-3 border-l-4 border-slate-500 shadow-sm mb-1 rounded-none">
               <div
                 className="flex items-center justify-between cursor-pointer group mb-2"
                 onClick={() => setMinimizeLayers(!minimizeLayers)}
               >
-                <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] group-hover:text-foreground transition-colors">
+                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                   Layer Management
                 </h3>
-                <button className="p-1 hover:bg-accent rounded transition-colors group-hover:bg-accent">
+                <button className="p-0.5 hover:bg-white/5 transition-colors">
                   {minimizeLayers ? (
-                    <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                    <ChevronDown className="h-3 w-3 text-slate-400" />
                   ) : (
-                    <ChevronUp className="h-3 w-3 text-muted-foreground" />
+                    <ChevronUp className="h-3 w-3 text-slate-400" />
                   )}
                 </button>
               </div>
@@ -732,6 +766,8 @@ const Index = () => {
                 />
               )}
             </div>
+
+            <Separator className="bg-border opacity-50" />
 
           </div>
         </aside>
